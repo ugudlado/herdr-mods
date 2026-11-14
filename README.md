@@ -1,5 +1,10 @@
 # Herdr Mods
 
+> **Fork note.** This fork maintains only [`repo-launcher-app`](repo-launcher-app/README.md),
+> trimmed to a small, auditable repository launcher. The other folders are
+> unchanged copies of upstream [dougcunha/herdr-mods](https://github.com/dougcunha/herdr-mods)
+> and are not maintained here.
+
 Mods, layouts and themes for the [Herdr](https://github.com/herdrdev/herdr)
 **desktop app**. They dispatch GitHub Actions, follow every job, show the
 pending work of your repositories and more, without leaving the app.
