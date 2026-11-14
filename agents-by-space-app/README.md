@@ -31,7 +31,7 @@ agents need you, what they asked, and a way to act. It is built on Herdr's shipp
   only that machine sees them), `team · loading` until it answers, and `team · lead needs you` in
   the blocked color when the lead is blocked.
 - **Start an agent.** The `+` on a machine divider opens a small menu of that machine's spaces with
-  `+ Claude` / `+ Codex` (the ones installed there): a new tab in that space.
+  `+ Terminal` (always) and `+ Claude` / `+ Codex` (the ones installed there): a new tab in that space.
 - **Row actions.** Hover a row for Peek, Pin and Stop. Stop asks again (`Stop?`, "End <agent> on
   <machine>"); the second click counts only after half a second, and Stop disarms when the pointer
   leaves or after 4 s. Inbox cards have no Stop.

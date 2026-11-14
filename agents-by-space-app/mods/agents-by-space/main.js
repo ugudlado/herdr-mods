@@ -438,7 +438,7 @@ export default class AgentsBySpace extends View {
       .when(Boolean(opts.count), (el) => el.child(div().text_color(t.muted).child(opts.count)));
   }
 
-  // A machine: a section divider with a thin rule above it, and a + that starts Claude or
+  // A machine: a section divider with a thin rule above it, and a + that starts a terminal, Claude or
   // Codex in one of its spaces.
   machineLabel(t, m, need, spaceList) {
     const key = m ?? "";
@@ -449,7 +449,7 @@ export default class AgentsBySpace extends View {
       .child(div().flex_1())
       .child(div().id(`q-${m ?? "local"}`).flex_none().w(20).h(18).rounded(4).flex().items_center().justify_center()
         .text_size(14).font_medium().text_color(t.muted).cursor_pointer().hover((st) => st.bg(t.hover).text_color(t.foreground))
-        .tooltip(`Start Claude or Codex in a space on ${m ?? "this computer"}`)
+        .tooltip(`New terminal, Claude or Codex tab in a space on ${m ?? "this computer"}`)
         .on_mouse_down("left", (e) => { this.downAt = e?.position ? { x: e.position.x, y: e.position.y } : null; })
         .on_click((_e, cx) => {
           cx.stop_propagation();
@@ -469,18 +469,18 @@ export default class AgentsBySpace extends View {
   // The + popup: each space of the machine with a button per installed agent.
   quickMenu(t, q) {
     const where = q.machine ?? "this computer";
-    const choices = q.choices;
+    // A terminal is always there (the machine's own shell); agents only when installed.
+    const choices = [{ key: "terminal", name: "Terminal", run: null }, ...(q.choices ?? [])];
     return v_flex().w_full().p(5).bg(t.popover).text_size(12.5)
-      .child(div().px(8).pt(4).pb(6).text_size(11).text_color(t.muted).child(`New agent tab on ${where}`))
-      .when(!choices, (el) => el.child(div().px(8).pb(6).text_color(t.muted).child(`Checking what's installed on ${where}…`)))
-      .when(Boolean(choices) && !choices.length, (el) => el.child(div().px(8).pb(6).text_color(t.muted).child(`Neither Claude nor Codex is installed on ${where}.`)))
-      .when(Boolean(choices?.length), (el) => el.children((q.spaces ?? []).map((s) => h_flex().id(`qs-${s.id}`).h(30).px(8).gap(6).rounded(7).items_center()
+      .child(div().px(8).pt(4).pb(6).text_size(11).text_color(t.muted).child(`New tab on ${where}`))
+      .when(!q.choices, (el) => el.child(div().px(8).pb(6).text_size(11).text_color(t.muted).child(`Checking for Claude and Codex on ${where}…`)))
+      .children((q.spaces ?? []).map((s) => h_flex().id(`qs-${s.id}`).h(30).px(8).gap(6).rounded(7).items_center()
         .hover((st) => st.bg(t.hover))
         .child(div().flex_1().min_w(0).truncate().text_color(t.foreground).child(s.name))
         .children(choices.map((a) => this.pill(t, `qm-${s.id}-${a.key}`, `+ ${a.name.replace(/ Code$/, "")}`, () => {
-          run("tab.new", { space: s.id, name: a.name, argv: a.run });
+          run("tab.new", a.run ? { space: s.id, name: a.name, argv: a.run } : { space: s.id });
           closeOverlay(props().overlay);
-        }).tooltip(`New ${a.name} tab in ${s.name}`))))));
+        }).tooltip(`New ${a.name.toLowerCase() === "terminal" ? "terminal" : a.name} tab in ${s.name}`)))));
   }
 
   // ---- render -----------------------------------------------------------------------------
