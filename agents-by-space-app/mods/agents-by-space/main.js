@@ -5,7 +5,24 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, setAgentOrder, layout, hc } from "herdr";
+import { agents, terminals, panes, focused, spaces, run, theme, setAgentOrder, layout, hc, exec, knownAgents } from "herdr";
+
+const TEAM_MS = 60000;      // how often `hc-team ls` runs on a machine with a team
+const QUICK = ["claude", "codex"];  // agents a space label can start, when installed there
+
+// `hc-team ls` lines: "<slug>  lead=<status>  workers=<n>" and "box: <machine> <bx_id>".
+export function parseTeams(text) {
+  const teams = {};
+  for (const line of String(text ?? "").split("\n")) {
+    const m = /^(\S+)\s+lead=(\S+)\s+workers=(\d+)/.exec(line);
+    if (m) teams[m[1]] = { lead: m[2], workers: Number(m[3]), boxes: 0 };
+  }
+  for (const line of String(text ?? "").split("\n")) {
+    const b = /^box:\s+hct-(\S+)-\d+\s/.exec(line);
+    if (b && teams[b[1]]) teams[b[1]].boxes++;
+  }
+  return teams;
+}
 
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
 const PREVIEW_MS = 15000;   // how old a screen preview may get before it is read again
@@ -83,7 +100,39 @@ export default class AgentsBySpace extends View {
     this.replyTo = null;
     this.input = InputState.new({ placeholder: "Reply, then Enter" });
     this.input.on("submit", (_e, cx) => this.sendReply(cx));
+    this.teams = {};        // machine -> { slug: { lead, workers, boxes } }, from `hc-team ls` there
+    this.teamAt = {};       // machine -> when it was asked
+    this.quick = {};        // machine -> installed agents of QUICK, from knownAgents()
+    this.hoverSpace = null;
     cx.timer.every(PREVIEW_MS, (cx) => { this.refreshInbox(cx); cx.notify(); });
+  }
+
+  // Team counts from `hc-team ls` on the lead's machine: box workers are two hops away, so
+  // only that machine's core sees them. Only machines that show a lead are asked.
+  readTeams(machine, cx) {
+    const key = machine ?? "";
+    if (this.teamAt[key] && Date.now() - this.teamAt[key] < TEAM_MS) return;
+    this.teamAt[key] = Date.now();
+    cx.spawn(async (cx) => {
+      try {
+        const r = await exec("sh", ["-lc", "command -v hc-team >/dev/null && hc-team ls"], { on: machine, timeout: 20000 });
+        if (r.code === 0) this.teams[key] = parseTeams(r.stdout);
+      } catch {}
+      cx.notify();
+    });
+  }
+
+  readQuick(machine, cx) {
+    const key = machine ?? "";
+    if (this.quick[key]) return;
+    this.quick[key] = [];
+    cx.spawn(async (cx) => {
+      try {
+        const list = await knownAgents({ on: machine });
+        this.quick[key] = QUICK.map((k) => list.find((a) => a.key === k && a.installed)).filter(Boolean);
+      } catch {}  // left empty: no quick buttons on that machine until the mod reloads
+      cx.notify();
+    });
   }
 
   // ---- data -------------------------------------------------------------------------------
@@ -256,6 +305,28 @@ export default class AgentsBySpace extends View {
       .when(Boolean(opts.count), (el) => el.child(div().text_color(t.dim).child(opts.count)));
   }
 
+  // A space's label; on hover, + buttons that start Claude or Codex in a new tab there.
+  // A space with an hc-team lead gets the team's line under it.
+  spaceLabel(t, s, machine, team) {
+    const quick = this.quick[machine ?? ""] ?? [];
+    const on = this.hoverSpace === s.id;
+    const head = h_flex().id(`s-${s.id}`).px(12).pt(4).h(24).flex_none().gap(6).items_center().text_size(11).font_medium()
+      .on_hover((h, cx) => { this.hoverSpace = h ? s.id : this.hoverSpace === s.id ? null : this.hoverSpace; cx.notify(); })
+      .child(div().flex_1().min_w(0).truncate().text_color(t.foreground).child(s.name))
+      .when(on, (el) => el.children(quick.map((a) => div().id(`q-${s.id}-${a.key}`).flex_none().h(18).px(6).rounded(5)
+        .flex().items_center().gap(4).text_size(10.5).text_color(t.muted).border_1().border_color(t.input)
+        .cursor_pointer().hover((st) => st.bg(t.hover).text_color(t.foreground))
+        .tooltip(`New ${a.name} tab in ${s.name}`)
+        .on_click((_e, cx) => { cx.stop_propagation(); run("tab.new", { space: s.id, name: a.name, argv: a.run }); })
+        .child("+").child(a.name.replace(/ Code$/, "")))));
+    if (!team) return [head];
+    const lead = team.lead === "blocked" ? "lead needs you" : `lead ${team.lead}`;
+    const parts = [lead, `${team.workers} worker${team.workers === 1 ? "" : "s"}`];
+    if (team.boxes) parts.push(`${team.boxes} box${team.boxes === 1 ? "" : "es"}`);
+    return [head, div().id(`team-${s.id}`).px(12).pb(2).text_size(10.5)
+      .text_color(team.lead === "blocked" ? t.blocked : t.dim).child(`hc-team · ${parts.join(" · ")}`)];
+  }
+
   // ---- render -----------------------------------------------------------------------------
 
   render(cx) {
@@ -317,12 +388,23 @@ export default class AgentsBySpace extends View {
       rows.push(this.label(t, "pinned", "Pinned", { count: String(pinned.length) }));
       for (const a of pinned) rows.push(...withKids(a, { name: a.space_name || a.label, detail: a.label }));
     }
+    // hc-team leads (labels role=lead, task=<slug>), by the space they show in.
+    const leadOf = new Map();
+    const byAddress = new Map(list.map((a) => [a.address, a]));
+    for (const term of all) {
+      if (term.state !== "live" || term.labels?.role !== "lead" || !term.labels?.task) continue;
+      const a = byAddress.get(term.address);
+      if (a) leadOf.set(a.space, term.labels.task);
+    }
     for (const [m, sp] of machineList) {
+      this.readQuick(m, cx);
+      if ([...sp.keys()].some((id) => leadOf.has(id))) this.readTeams(m, cx);
       if (machineList.length > 1 || m !== null) rows.push(this.label(t, `m-${m ?? "local"}`, m ?? "This computer", { size: 11.5, color: t.muted, top: 10 }));
       const spacesSorted = [...sp.values()].sort((x, y) => Math.max(...y.members.map(urgency)) - Math.max(...x.members.map(urgency)) || x.name.localeCompare(y.name));
       for (const s of spacesSorted) {
         s.members.sort(order);
-        rows.push(this.label(t, `s-${s.id}`, s.name, { indent: 12, color: t.foreground, top: 4, h: 24 }));
+        const slug = leadOf.get(s.id);
+        rows.push(...this.spaceLabel(t, s, m, slug ? this.teams[m ?? ""]?.[slug] ?? { lead: "…", workers: 0, boxes: 0 } : null));
         for (const a of s.members) rows.push(...withKids(a, {}));
       }
     }

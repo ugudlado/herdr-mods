@@ -13,6 +13,11 @@ A Herdr app mod (`agents-by-space`) for the sidebar's Agents block. It is built 
   Reply shows only on a done agent with no choice menu on screen (a permission prompt, a question
   with options), and the screen is read again right before sending: Enter could otherwise pick the
   menu's selected option. Answer menus in the agent's own pane (Open).
+- **hc-team spaces.** A space with an hc-team lead (labels `role=lead`, `task=<slug>`) shows
+  `hc-team · lead <status> · N workers · B boxes` under its name, from `hc-team ls` on that machine
+  (box workers are two hops away, so only that machine sees them).
+- **Start an agent in a space.** Hover a space's name for `+ Claude` and `+ Codex` (when installed
+  on that machine): a new tab in that space.
 - **Useful rows.** How long since the agent last changed (`idle 40m`), its last lines on hover, and
   Peek, Pin and Stop (Stop asks for a second click).
 
@@ -21,7 +26,9 @@ A Herdr app mod (`agents-by-space`) for the sidebar's Agents block. It is built 
 - `hc read <terminal> --lines 0`: the visible screen of blocked and done agents (every 15 s) and of
   the row under the pointer. `--lines 0` reads only the screen, so it never scrolls the agent's view.
 - `hc send <terminal> <text>`: only when you press Enter in a Reply box.
-- The app's own commands: `pane.focus`, `terminal.peek`, `terminal.pin`, `terminal.kill`.
+- `sh -lc "command -v hc-team >/dev/null && hc-team ls"` on a machine that shows an hc-team lead, at most once a minute.
+- `knownAgents()` once per machine, for the `+` buttons.
+- The app's own commands: `pane.focus`, `terminal.peek`, `terminal.pin`, `terminal.kill`, `tab.new`.
 
 No network requests, no files read or written. "Last changed" times stay in the mod's `localStorage`.
 
