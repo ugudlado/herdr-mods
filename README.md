@@ -1,7 +1,8 @@
 # Herdr Mods
 
 > **Fork note.** This fork maintains only [`repo-launcher-app`](repo-launcher-app/README.md),
-> trimmed to a small, auditable repository launcher. The other folders are
+> trimmed to a small, auditable repository launcher, and adds
+> [`agents-by-space-app`](agents-by-space-app/README.md) (sidebar agents by machine and space, with a Needs you inbox). The other folders are
 > unchanged copies of upstream [dougcunha/herdr-mods](https://github.com/dougcunha/herdr-mods)
 > and are not maintained here.
 

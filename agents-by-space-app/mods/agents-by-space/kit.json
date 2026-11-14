@@ -1,0 +1,6 @@
+{
+  "app": "agents-by-space-app",
+  "description": "The sidebar's agents grouped by machine and space, with a Needs you inbox that shows each agent's last lines and lets you reply.",
+  "readme": "https://github.com/ugudlado/herdr-mods/tree/main/agents-by-space-app",
+  "credit": { "text": "Based on Herdr's shipped agents mod", "url": "https://github.com/herdrdev/herdr-app" }
+}
