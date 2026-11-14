@@ -38,6 +38,10 @@ agents need you, what they asked, and a way to act. It is built on Herdr's shipp
 - **Narrow rail.** When the sidebar is a narrow rail: numbers and status in the same order as the
   wide list (inbox first), with `space · label · machine` as each row's tooltip.
 
+- **Sort.** The `Activity ⇅` / `A–Z ⇅` button in the Agents header switches the order under each
+  machine: by activity (agents that need you, then working, then most recently changed) or by space
+  and agent name. The choice is kept in `shared("agents-by-space.sort")`. The inbox keeps its own order.
+
 ## What it runs
 
 - `hc read <terminal> --lines 0`: the visible screen of the inbox's agents (every 15 s) and of the

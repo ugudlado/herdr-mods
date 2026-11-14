@@ -14,6 +14,7 @@ const QUICK = ["claude", "codex"];  // agents a space label can start, when inst
 const STOP_GAP_MS = 500;    // the confirming click of Stop must come this long after the first
 const STOP_ARMED_MS = 4000; // Stop disarms after this long
 const INBOX_KEY = "agents-by-space.inbox";  // shared: [{ a: address, at: when it entered }]
+const SORT_KEY = "agents-by-space.sort"; // "activity" (default) or "name"
 const SPACE_W = 64;         // the space-name column of a row
 
 // `hc-team ls` lines: "<slug>  lead=<status>  workers=<n>" and "box: <machine> <bx_id>".
@@ -506,7 +507,16 @@ export default class AgentsBySpace extends View {
     // An agent of the sticky inbox ranks as done even after it turned idle.
     const rankOf = (address, s) => Math.max(RANK[s] ?? 0, sticky.has(address) ? RANK.done : 0);
     const urgency = (a) => Math.max(rankOf(a.address, a.status), ...this.tree(all, a.address).map((s) => RANK[kidStatus(s.t, listed)] ?? 0));
-    const order = (x, y) => urgency(y) - urgency(x) || this.since(y) - this.since(x) || y.seq - x.seq;
+    // "activity": most urgent first, then most recently changed. "name": spaces and agents A to Z.
+    const byName = shared(SORT_KEY) === "name";
+    const byText = (x, y) => x.localeCompare(y, undefined, { sensitivity: "base", numeric: true });
+    const latest = (s) => Math.max(...s.members.map((a) => this.since(a)));
+    const order = byName
+      ? (x, y) => byText(x.space_name || "", y.space_name || "") || byText(x.label || "", y.label || "")
+      : (x, y) => urgency(y) - urgency(x) || this.since(y) - this.since(x) || y.seq - x.seq;
+    const spaceOrder = byName
+      ? (x, y) => byText(x.name, y.name)
+      : (x, y) => Math.max(...y.members.map(urgency)) - Math.max(...x.members.map(urgency)) || latest(y) - latest(x) || byText(x.name, y.name);
 
     const inbox = list.filter((a) => sticky.has(a.address))
       .sort((x, y) => (y.status === "blocked") - (x.status === "blocked") || sticky.get(y.address) - sticky.get(x.address));
@@ -524,7 +534,7 @@ export default class AgentsBySpace extends View {
     }
     const machineList = [...machines.entries()].sort(([x], [y]) => (x === null ? -1 : y === null ? 1 : x.localeCompare(y)))
       .map(([m, sp]) => {
-        const spacesSorted = [...sp.values()].sort((x, y) => Math.max(...y.members.map(urgency)) - Math.max(...x.members.map(urgency)) || x.name.localeCompare(y.name));
+        const spacesSorted = [...sp.values()].sort(spaceOrder);
         for (const s of spacesSorted) s.members.sort(order);
         return [m, spacesSorted];
       });
@@ -585,7 +595,14 @@ export default class AgentsBySpace extends View {
     const working = list.filter((a) => a.status === "working").length;
     return v_flex().size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border).text_size(13)
       .child(h_flex().px(16).h(41).pt(14).pb(5).flex_none().items_center().justify_between()
-        .child(div().text_size(11.5).font_medium().text_color(t.muted).child("Agents"))
+        .child(h_flex().gap(8).items_center()
+          .child(div().text_size(11.5).font_medium().text_color(t.muted).child("Agents"))
+          .child(div().id("abs-sort").h(18).px(6).rounded(5).flex().items_center().gap(3).text_size(10.5)
+            .text_color(t.muted).border_1().border_color(t.border).cursor_pointer()
+            .hover((s) => s.bg(t.hover).text_color(t.foreground))
+            .tooltip(byName ? "Sorted by name. Click to sort by activity" : "Sorted by activity. Click to sort by name")
+            .on_click(() => setShared(SORT_KEY, byName ? "activity" : "name"))
+            .child(byName ? "A–Z" : "Activity").child("⇅")))
         .child(inbox.length
           ? div().text_size(11).font_medium().text_color(t.blocked).child(`${inbox.length} need you`)
           : div().text_size(11).text_color(t.muted).child(`${plural(list.length, "agent", "agents")} · ${working} working`)))
