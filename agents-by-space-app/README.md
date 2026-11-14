@@ -10,7 +10,9 @@ A Herdr app mod (`agents-by-space`) for the sidebar's Agents block. It is built 
 - **A "Needs you" inbox on top.** Every blocked or done agent, from every machine, as a card with the
   last lines on its screen, so you can read the question without switching. **Open** goes there,
   **Peek** looks without switching, and on a done agent **Reply** types an answer and presses Enter.
-  A blocked agent has no Reply: it usually sits at a permission prompt, which you answer in its pane.
+  Reply shows only on a done agent with no choice menu on screen (a permission prompt, a question
+  with options), and the screen is read again right before sending: Enter could otherwise pick the
+  menu's selected option. Answer menus in the agent's own pane (Open).
 - **Useful rows.** How long since the agent last changed (`idle 40m`), its last lines on hover, and
   Peek, Pin and Stop (Stop asks for a second click).
 

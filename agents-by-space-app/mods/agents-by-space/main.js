@@ -55,6 +55,13 @@ export function lastLines(text, n = PREVIEW_LINES) {
   return out.filter(Boolean);
 }
 
+// A choice menu on screen (a permission prompt, a question with options): Enter would pick
+// its selected option, so Reply stays hidden. No preview yet counts as a menu too.
+const MENU = /do you want|proceed\?|^\s*(❯\s*)?\d+[.)]\s+(yes|no|allow|deny)|\[y\/n\]|\(y\/n\)|enter to (confirm|select)|esc to cancel/i;
+export function looksLikeMenu(lines) {
+  return !lines || lines.some((l) => MENU.test(l));
+}
+
 // The agent's tab name, or its own title when the tab has no name of its own.
 function labelOf(a, tab) {
   const prog = a.program?.name;
@@ -119,11 +126,16 @@ export default class AgentsBySpace extends View {
     const to = this.replyTo;
     if (!text || !to) return;
     // Checked again at send time: the agent may have moved on to a prompt meanwhile.
-    if (agents().find((a) => a.address === to)?.status !== "done") { this.replyTo = null; cx.notify(); return; }
+    if (agents().find((a) => a.address === to)?.status !== "done" || looksLikeMenu(this.preview[to]?.lines)) { this.replyTo = null; cx.notify(); return; }
     this.input.set_value("");
     this.replyTo = null;
     cx.spawn(async (cx) => {
-      try { await hc(["send", to, text]); } catch {}
+      try {
+        // Read the screen again right before typing: send only if no menu came up meanwhile.
+        const r = await hc(["read", to, "--lines", "0"]);
+        const fresh = r.code === 0 ? lastLines(r.stdout, 8) : null;
+        if (!looksLikeMenu(fresh) && agents().find((a) => a.address === to)?.status === "done") await hc(["send", to, text]);
+      } catch {}
       delete this.preview[to];
       this.read(to, cx, true);
       cx.notify();
@@ -222,7 +234,7 @@ export default class AgentsBySpace extends View {
         .when(replying, (el) => el.child(Input.new(this.input).flex_1().h(26).px(8).rounded(6).border_1().border_color(t.accent).bg(t.background).text_size(12).text_color(t.foreground)))
         // No Reply for a blocked agent: it is usually at a permission prompt, and typed text plus
         // Enter could answer it. Open it and answer there.
-        .when(!replying && a.status === "done", (el) => el
+        .when(!replying && a.status === "done" && !looksLikeMenu(lines), (el) => el
           .child(this.pill(t, `reply-${a.address}`, "Reply", (cx) => { this.replyTo = a.address; this.input.set_value(""); this.input.focus(); cx.notify(); })))
         .when(!replying, (el) => el
           .child(this.pill(t, `open-${a.address}`, "Open", () => run("pane.focus", { pane: a.pane })))
