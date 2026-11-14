@@ -9,9 +9,6 @@ import { segments } from "./fuzzy.js";
 
 export const icon = (name) => `mods/${MOD}/${name}.svg`;
 
-/** The color of a favorite. */
-export const GOLD = "#f5a524";
-
 /** A color with an alpha suffix (`"#rrggbb" + "aa"`). Other colors pass through. */
 export const tint = (color, alpha = "24") => (/^#[0-9a-f]{6}$/i.test(color || "") ? color + alpha : color);
 
@@ -71,7 +68,7 @@ export function pill(t, label, { color = null, symbol = null, spin = false, dot 
     .child(max ? div().max_w(max).truncate().child(label) : label);
 }
 
-/** A key cap, such as `↵` or `Ctrl+S`. */
+/** A key cap, such as `↵` or `Ctrl+Enter`. */
 export function kbd(t, label) {
   return h_flex().h(18).min_w(18).px(5).flex_none().items_center().justify_center().rounded(5)
     .bg(t.raised).border_1().border_color(t.border).text_size(10.5).font_semibold().text_color(t.muted)
@@ -83,16 +80,6 @@ export function hint(t, keys, label) {
   return h_flex().gap(5).flex_none().items_center().text_size(11).text_color(t.dim)
     .children(keys.map((k) => kbd(t, k)))
     .child(label);
-}
-
-/** An on/off switch. The knob slides. */
-export function toggle(t, id, on, onClick) {
-  return div().id(id).relative().w(30).h(18).flex_none().rounded(9).cursor_pointer()
-    .bg(on ? t.accent : t.input ?? t.border)
-    .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
-    .on_click((_e, cx) => onClick(cx))
-    .child(div().id(`${id}-knob`).absolute().top(2).left(on ? 14 : 2).size(14).rounded(7)
-      .bg("#ffffff").shadow_sm().transition("left", { duration: 140, easing: "ease-out" }));
 }
 
 /** A square button with an icon. `spin` turns the icon (refresh while it works). */
@@ -148,7 +135,6 @@ export function segmented(t, id, options, value, onPick) {
 
 /**
  * Text with the characters at `indices` drawn in `hit` and bold.
- * `limit`: draw only the first `limit` characters (the rest is cut).
  */
 export function highlighted(text, indices, { color, hit, size = 13, bold = false }) {
   const parts = segments(text, indices);

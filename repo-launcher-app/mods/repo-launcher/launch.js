@@ -1,72 +1,19 @@
-// Opens a terminal or an agent for a repository: in the repository's open
-// space, or in a new space.
+// Opens a terminal or an agent for a repository: in a new tab of the
+// repository's open space, or in a new space on the repository's machine.
 
 import { spaces, panes, run } from "herdr";
-import { ACCOUNT_AGENTS, isInside, isWindows, powershell } from "./scan.js";
-
-/**
- * Splits a text of arguments like a shell: spaces separate the arguments,
- * and single or double quotes keep spaces inside one.
- */
-export function splitArgs(text) {
-  const out = [];
-  let cur = "";
-  let quote = null;
-  let started = false;
-  for (const c of String(text ?? "")) {
-    if (quote) {
-      if (c === quote) quote = null;
-      else cur += c;
-    } else if (c === '"' || c === "'") {
-      quote = c;
-      started = true;
-    } else if (/\s/.test(c)) {
-      if (started || cur) out.push(cur);
-      cur = "";
-      started = false;
-    } else {
-      cur += c;
-    }
-  }
-  if (started || cur) out.push(cur);
-  return out;
-}
-
-const psQuote = (s) => `'${String(s).replace(/'/g, "''")}'`;
-
-/**
- * The argv that starts `agent` (from knownAgents()) with the extra
- * arguments and, for a second account, its folder in the account's
- * environment variable.
- *
- * Herdr runs an argv inside the person's shell. It has no field for
- * environment variables, so a second account goes through a small wrapper:
- * `env NAME=dir agent ...` on macOS and Linux, and a PowerShell that sets
- * `$env:NAME` on Windows.
- */
-export async function agentArgv(agent, extraArgs, account) {
-  const argv = [...(agent.run ?? [agent.key]), ...splitArgs(extraArgs)];
-  const spec = ACCOUNT_AGENTS[agent.key];
-  if (!account || account.isDefault || !spec) return argv;
-  if (isWindows()) {
-    const ps = await powershell();
-    const command = `$env:${spec.env}=${psQuote(account.dir.replace(/\//g, "\\"))}; & ${argv.map(psQuote).join(" ")}`;
-    return [ps, "-NoLogo", "-NoProfile", "-Command", command];
-  }
-  return ["env", `${spec.env}=${account.dir}`, ...argv];
-}
+import { isInside } from "./scan.js";
 
 /**
  * The open spaces of `machine` (null: this computer) that work in `repo`: a
  * space with a terminal whose live folder is in the repository.
  *
- * The space of the repository comes first: its name is the repository's
- * (Herdr names a space after the repository of its first terminal), then
- * its start folder is in the repository, then the shown space; then the
- * space with the most terminals there.
+ * Best first: the space named after the repository (Herdr names a space after
+ * the repository of its first terminal), then one whose start folder is in
+ * the repository, then the shown space; then the most terminals there.
  */
 export function spacesFor(repoPath, machine = null, allSpaces = spaces(), allPanes = panes()) {
-  const repoName = repoPath.replace(/[\\/]+$/, "").split(/[\\/]/).pop().toLowerCase();
+  const repoName = repoPath.replace(/\/+$/, "").split("/").pop().toLowerCase();
   const inRepo = new Map(); // tab id -> [panes in the repository, all panes]
   for (const p of allPanes) {
     if (!p.terminal) continue;
@@ -83,8 +30,7 @@ export function spacesFor(repoPath, machine = null, allSpaces = spaces(), allPan
     }
     return { hit, ratio: all ? hit / all : 0 };
   };
-  // `folder` is where a space was made, not where it works now, so it only
-  // breaks ties.
+  // `folder` is where a space was made, not where it works now: only a tie-break.
   const rank = (s) => (s.name.toLowerCase() === repoName ? 4 : 0) + (isInside(s.folder, repoPath) ? 2 : 0) + (s.active ? 1 : 0);
   return allSpaces
     .filter((s) => (s.machine ?? null) === (machine ?? null))
@@ -95,85 +41,16 @@ export function spacesFor(repoPath, machine = null, allSpaces = spaces(), allPan
 }
 
 /**
- * Opens `argv` (null: a shell) for the repository.
- * `reuse`: use the repository's open space when it has one.
- * `mode`: "tab" (a new tab), "split" (a split to the right of the space's
- * focused pane) or "go" (only show the space; an agent still gets a tab).
- * `machine`: the machine of the repository (null: this computer), and
- * `windows`: that machine runs Windows.
- * `target`: "new" (a new space) or the id of an open space of that machine.
- * Without it, `reuse` picks the space.
+ * Opens `argv` (null: a shell) in the repository.
+ * `space`: an open space to add a tab to; null makes a new space on `machine`
+ * (null: this computer). `name`: the tab name.
  */
-export function open(repoPath, { argv = null, name = undefined, reuse = true, mode = "tab", machine = null, windows = isWindows(), target = null } = {}) {
-  const folder = windows ? repoPath.replace(/\//g, "\\") : repoPath;
-  const own = spacesFor(repoPath, machine);
-  const space = target === "new" ? null
-    : target ? spaces().find((s) => s.id === target) ?? null
-    : reuse ? own[0] : null;
-  const withArgv = (args) => (argv ? { ...args, argv } : args);
-
+export function open(repoPath, { argv = null, name = undefined, machine = null, space = null } = {}) {
+  const extra = { ...(argv ? { argv } : {}) };
   if (!space) {
-    run("space.new", withArgv({ folder, machine: machine ?? "", ...(name ? { tab: name } : {}) }));
-    return { created: true };
-  }
-  // Some layouts (a board of agents, say) show the focused pane, not the
-  // selected space, so the space is shown by focusing one of its panes.
-  const pane = paneOf(space, repoPath);
-  // "Go to space" needs a terminal that works in the repository already.
-  if (mode === "go" && !argv && own.some((s) => s.id === space.id)) {
-    run("space.select", { id: space.id });
-    if (pane) run("pane.focus", { pane: pane.pane });
-    return { created: false };
-  }
-  if (mode === "split" && pane) {
-    run("space.select", { id: space.id });
-    run("pane.focus", { pane: pane.pane });
-    run("terminal.open", withArgv({ place: "right", folder }));
-    return { created: true };
+    run("space.new", { folder: repoPath, machine: machine ?? "", ...extra, ...(name ? { tab: name } : {}) });
+    return;
   }
   run("space.select", { id: space.id });
-  run("tab.new", withArgv({ space: space.id, folder, ...(name ? { name } : {}) }));
-  return { created: true };
-}
-
-/**
- * Opens `argv` (null: a shell) outside a repository, like Herdr's New menu.
- * `target`: "new" (a new space on `machine`) or the id of an open space.
- * `mode`: "split" splits the space's focused pane to the right; any other
- * mode opens a new tab. No folder: Herdr picks the start folder.
- */
-export function openFree({ argv = null, name = undefined, target = "new", mode = "tab", machine = null } = {}) {
-  const withArgv = (args) => (argv ? { ...args, argv } : args);
-  const space = target === "new" ? null : spaces().find((s) => s.id === target) ?? null;
-  if (!space) {
-    run("space.new", withArgv({ machine: machine ?? "", ...(name ? { tab: name } : {}) }));
-    return { created: true };
-  }
-  run("space.select", { id: space.id });
-  const pane = mode === "split" ? paneOf(space, null) : null;
-  if (pane) {
-    run("pane.focus", { pane: pane.pane });
-    run("terminal.open", withArgv({ place: "right" }));
-    return { created: true };
-  }
-  run("tab.new", withArgv({ space: space.id, ...(name ? { name } : {}) }));
-  return { created: true };
-}
-
-/**
- * The terminal pane of `space` to show or split: the focused one in the
- * shown tab when it works in the repository, else one that works there,
- * else any terminal pane of the space.
- */
-export function paneOf(space, repoPath, allPanes = panes()) {
-  const tabIds = new Set(space.tabs.map((t) => t.id));
-  const activeTab = space.tabs.find((t) => t.active)?.id;
-  const mine = allPanes.filter((p) => p.terminal && tabIds.has(p.tab));
-  const inRepo = repoPath ? mine.filter((p) => isInside(p.cwd, repoPath)) : [];
-  return inRepo.find((p) => p.tab === activeTab && p.focused)
-    ?? inRepo.find((p) => p.tab === activeTab)
-    ?? inRepo[0]
-    ?? mine.find((p) => p.tab === activeTab)
-    ?? mine[0]
-    ?? null;
+  run("tab.new", { space: space.id, folder: repoPath, ...extra, ...(name ? { name } : {}) });
 }
