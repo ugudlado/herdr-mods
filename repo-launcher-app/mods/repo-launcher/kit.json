@@ -1,7 +1,11 @@
 {
   "app": "repo-launcher-app",
-  "description": "A popup that finds your Git repositories and opens one in a space, with an agent, an account and arguments that you choose. It also finds repositories on your other machines and opens them in a space there.",
+  "description": "A popup that finds your Git repositories, on this computer and on your other machines, and starts a terminal or an installed agent there: in the repository's open space or in a new space.",
   "readme": "https://github.com/dougcunha/herdr-mods/tree/main/repo-launcher-app",
+  "credit": {
+    "text": "Based on Repo Launcher by Douglas Cunha (MIT)",
+    "url": "https://github.com/dougcunha/herdr-mods/tree/main/repo-launcher-app"
+  },
   "settings": [
     {
       "id": "reuse",
@@ -9,38 +13,8 @@
       "key": "repo-launcher.settings",
       "path": "reuse",
       "default": true,
-      "label": "Reuse open space",
-      "hint": "When a space works in the repository, open the choice there."
-    },
-    {
-      "id": "reuse-mode",
-      "type": "enum",
-      "key": "repo-launcher.settings",
-      "path": "reuseMode",
-      "default": "tab",
-      "label": "Open there as",
-      "hint": "Used when the choice opens in an open space.",
-      "options": [
-        {
-          "value": "tab",
-          "label": "New tab"
-        },
-        {
-          "value": "split",
-          "label": "Split right"
-        },
-        {
-          "value": "go",
-          "label": "Go to space"
-        }
-      ]
-    },
-    {
-      "id": "key",
-      "type": "key",
-      "action": "mod.open:repo-launcher",
-      "label": "Shortcut",
-      "hint": "Saved in keys.json. A Ctrl+letter key stops reaching the programs in the terminals."
+      "label": "Open in the repository's space",
+      "hint": "When a space works in the repository, open a new tab there. Off: always a new space."
     },
     {
       "id": "more",
@@ -50,8 +24,8 @@
         "name": "repo-launcher"
       },
       "button": "Open Repo Launcher",
-      "label": "Folders, agent arguments and accounts",
-      "hint": "These settings are in the launcher: open it and click the settings button at the top right."
+      "label": "Root folders",
+      "hint": "The folders are set in the launcher: open it and click the settings button at the top right."
     }
   ]
 }

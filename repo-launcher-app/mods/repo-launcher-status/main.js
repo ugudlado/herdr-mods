@@ -1,7 +1,7 @@
-// A status bar item for the Repo Launcher: "Ctrl+P  repos". A click opens
-// the launcher. It sits in the status row of a layout, beside the
-// workspace-status block, and draws the same bar look (chrome fill, top
-// border, 11.8 px text).
+// A status bar item for the Repo Launcher: "<key>  repos", with the key that
+// keys.json binds to mod.open:repo-launcher. A click opens the launcher. It
+// sits in the status row of a layout, beside the workspace-status block, and
+// draws the same bar look (chrome fill, top border, 11.8 px text).
 
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
@@ -14,7 +14,7 @@ const offView = () => { const o = props()?.overlay; if (o) closeOverlay(o); retu
 
 const ACTION = "mod.open:repo-launcher";
 
-/** The key bound to the launcher, spelled like the palette hint ("Ctrl+P"). */
+/** The key bound to the launcher, spelled like the palette hint ("⌘O"). */
 function shortcut() {
   const mac = window()?.platform === "macos";
   const names = { cmd: mac ? "⌘" : "Ctrl+", ctrl: mac ? "⌃" : "Ctrl+", shift: mac ? "⇧" : "Shift+", alt: mac ? "⌥" : "Alt+", option: mac ? "⌥" : "Alt+" };
