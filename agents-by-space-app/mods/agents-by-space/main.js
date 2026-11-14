@@ -85,7 +85,8 @@ export function tidyTitle(s, spaceName) {
     .replace(/\b(?=[0-9a-f]*\d)[0-9a-f]{8,}\b/gi, "");
   if (spaceName) {
     const name = spaceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    x = x.replace(new RegExp(`(^|[${SEP}])${name}(?=$|[${SEP}])`, "gi"), "$1");
+    // Only the name as a word of its own: "chaduvu-project" keeps its name, or "-project" is left.
+    x = x.replace(new RegExp(`(^|\\s)${name}(?=$|\\s|[:·|,])`, "gi"), "$1");
   }
   return x.replace(new RegExp(`^[${SEP}]+|[${SEP}]+$`, "g"), "").replace(/\s{2,}/g, " ").trim();
 }
