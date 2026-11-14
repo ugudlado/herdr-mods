@@ -17,7 +17,7 @@ const INBOX_KEY = "agents-by-space.inbox";  // shared: [{ a: address, at: when i
 const SORT_KEY = "agents-by-space.sort"; // "activity" (default) or "name"
 const SPACE_W = 64;         // the space-name column of a row
 
-// `hc-team ls` lines: "<slug>  lead=<status>  workers=<n>" and "box: <machine> <bx_id>".
+// `hc-team ls` lines: "<slug>  lead=<status>  workers=<n>" and "box: <machine>".
 export function parseTeams(text) {
   const teams = {};
   for (const line of String(text ?? "").split("\n")) {
@@ -25,7 +25,7 @@ export function parseTeams(text) {
     if (m) teams[m[1]] = { lead: m[2], workers: Number(m[3]), boxes: 0 };
   }
   for (const line of String(text ?? "").split("\n")) {
-    const b = /^box:\s+hct-(\S+)-\d+\s/.exec(line);
+    const b = /^box:\s+hct-(\S+)-\d+(\s|$)/.exec(line);
     if (b && teams[b[1]]) teams[b[1]].boxes++;
   }
   return teams;
