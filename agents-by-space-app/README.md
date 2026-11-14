@@ -4,8 +4,8 @@ A Herdr app mod (`agents-by-space`) for the sidebar's Agents block. It is built 
 `agents` mod and adds three things:
 
 - **Grouped by machine and space.** This computer first, then each machine of `hc machine ls`, then
-  each space. Agents that need you go to the top of their space, and spaces with the most urgent agents
-  come first. A space where every agent is idle folds into one line until you open it. Sub-agents
+  each space as a plain label with its agents under it. Agents that need you go to the top of their
+  space, and spaces with the most urgent agents come first. Sub-agents
   (terminals an agent started with `hc run`, such as an hc-team lead's workers) show under their parent.
 - **A "Needs you" inbox on top.** Every blocked or done agent, from every machine, as a card with the
   last lines on its screen, so you can read the question without switching. **Open** goes there,
@@ -21,8 +21,7 @@ A Herdr app mod (`agents-by-space`) for the sidebar's Agents block. It is built 
 - `hc send <terminal> <text>`: only when you press Enter in a Reply box.
 - The app's own commands: `pane.focus`, `terminal.peek`, `terminal.pin`, `terminal.kill`.
 
-No network requests, no files read or written. Fold choices and "last changed" times stay in the
-mod's `localStorage`.
+No network requests, no files read or written. "Last changed" times stay in the mod's `localStorage`.
 
 ## Install
 

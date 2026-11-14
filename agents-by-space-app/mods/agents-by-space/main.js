@@ -67,8 +67,6 @@ function labelOf(a, tab) {
 
 export default class AgentsBySpace extends View {
   init(_props, cx) {
-    // Fold choices the person made (id -> true folded / false open), kept across restarts.
-    this.fold = JSON.parse(localStorage.getItem("fold") ?? "{}");
     // Each agent's last state and when it changed, kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
     this.preview = {};      // address -> { lines, at }
@@ -130,13 +128,6 @@ export default class AgentsBySpace extends View {
       this.read(to, cx, true);
       cx.notify();
     });
-    cx.notify();
-  }
-
-  isFolded(id, auto) { return this.fold[id] ?? auto; }
-  toggle(id, auto, cx) {
-    this.fold[id] = !this.isFolded(id, auto);
-    localStorage.setItem("fold", JSON.stringify(this.fold));
     cx.notify();
   }
 
@@ -245,16 +236,12 @@ export default class AgentsBySpace extends View {
       .on_click((_e, cx) => { cx.stop_propagation(); action(cx); }).child(text);
   }
 
-  header(t, id, text, opts) {
-    const folded = this.isFolded(id, opts.autoFold ?? false);
+  // A plain label over its rows: a machine, a space, the inbox or the pinned agents.
+  label(t, id, text, opts = {}) {
     return h_flex().id(id).px(opts.indent ?? 8).pt(opts.top ?? 6).h(opts.h ?? 28).flex_none().gap(6).items_center()
-      .text_size(opts.size ?? 11).font_medium().cursor_pointer()
-      .on_click((_e, cx) => this.toggle(id, opts.autoFold ?? false, cx))
-      .child(svg(`mods/workspace-chrome/chevron-${folded ? "right" : "down"}.svg`).size(10).flex_none().text_color(t.dim))
+      .text_size(opts.size ?? 11).font_medium()
       .child(div().truncate().text_color(opts.color ?? t.dim).child(text))
-      .when(Boolean(opts.count), (el) => el.child(div().text_color(t.dim).child(opts.count)))
-      .child(div().flex_1())
-      .when(Boolean(opts.top_status) && folded, (el) => el.child(this.status(t, opts.top_status)));
+      .when(Boolean(opts.count), (el) => el.child(div().text_color(t.dim).child(opts.count)));
   }
 
   // ---- render -----------------------------------------------------------------------------
@@ -311,27 +298,19 @@ export default class AgentsBySpace extends View {
     };
 
     if (inbox.length) {
-      rows.push(this.header(t, "inbox", "Needs you", { color: t.blocked, count: String(inbox.length), top: 4 }));
-      if (!this.isFolded("inbox", false)) rows.push(...inbox.map((a) => this.card(t, a, now)));
+      rows.push(this.label(t, "inbox", "Needs you", { color: t.blocked, count: String(inbox.length), top: 4 }));
+      rows.push(...inbox.map((a) => this.card(t, a, now)));
     }
     if (pinned.length) {
-      rows.push(this.header(t, "pinned", "Pinned", { count: String(pinned.length) }));
-      if (!this.isFolded("pinned", false)) for (const a of pinned) rows.push(...withKids(a, { name: a.space_name || a.label, detail: a.label }));
+      rows.push(this.label(t, "pinned", "Pinned", { count: String(pinned.length) }));
+      for (const a of pinned) rows.push(...withKids(a, { name: a.space_name || a.label, detail: a.label }));
     }
     for (const [m, sp] of machineList) {
-      const mid = `m-${m ?? "local"}`;
-      const n = [...sp.values()].reduce((c, s) => c + s.members.length, 0);
-      if (machineList.length > 1 || m !== null) rows.push(this.header(t, mid, m ?? "This computer", { size: 11.5, color: t.muted, count: String(n), top: 10 }));
-      if (this.isFolded(mid, false)) continue;
+      if (machineList.length > 1 || m !== null) rows.push(this.label(t, `m-${m ?? "local"}`, m ?? "This computer", { size: 11.5, color: t.muted, top: 10 }));
       const spacesSorted = [...sp.values()].sort((x, y) => Math.max(...y.members.map(urgency)) - Math.max(...x.members.map(urgency)) || x.name.localeCompare(y.name));
       for (const s of spacesSorted) {
         s.members.sort(order);
-        const allIdle = s.members.every((a) => a.status === "idle");
-        const top = s.members.reduce((best, a) => ((RANK[a.status] ?? 0) > (RANK[best] ?? 0) ? a.status : best), null);
-        const sid = `s-${s.id}`;
-        // A space where every agent is idle folds by itself until you open it.
-        rows.push(this.header(t, sid, s.name, { indent: 14, count: s.members.length > 1 || allIdle ? String(s.members.length) : null, autoFold: allIdle, top_status: top, top: 2, h: 26 }));
-        if (this.isFolded(sid, allIdle)) { navOrder.push(...s.members.map((a) => a.address)); continue; }
+        rows.push(this.label(t, `s-${s.id}`, s.name, { indent: 12, color: t.foreground, top: 4, h: 24 }));
         for (const a of s.members) rows.push(...withKids(a, {}));
       }
     }
