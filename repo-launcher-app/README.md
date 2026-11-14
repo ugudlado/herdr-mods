@@ -1,108 +1,80 @@
-# Repo Launcher for the Herdr app
+# Repo Launcher for the Herdr app (trimmed fork)
 
-![Repo Launcher](preview.png)
+A small Herdr app mod: press a key, fuzzy-find a Git repository, and start
+Claude Code, Codex (or any other installed agent) or a plain terminal there.
 
-A Herdr app mod that opens a repository from the keyboard. Press `Ctrl+P`, type a part of the name (fuzzy search), and press Enter. Then pick what to open in the repository: a terminal, or an agent such as Claude Code, Codex, OpenCode or Antigravity. Each account of Claude Code and Codex is a separate choice.
+This is a trimmed fork of the Repo Launcher by Douglas Cunha
+([dougcunha/herdr-mods](https://github.com/dougcunha/herdr-mods), MIT, see
+`../LICENSE`). The fork removed Windows support, multiple accounts, per-agent
+arguments, favorites, split and "go to space" modes, and the in-app shortcut
+editor, so the code is small enough to audit.
 
-- **Fuzzy search.** `hm` finds `herdr-mods`. The matched letters are highlighted. Words separated by a space can match the name or the folder.
-- **Favorites.** A star (or `Ctrl+S`) puts a repository in the **Favorites** section at the top. Favorites also rank higher in the search.
-- **Recent.** The 5 repositories that you opened last come next.
-- **Open space indicator.** A pill on the row names the space that works in the repository, in the color of that space. A spinner shows that an agent works there; a red dot shows that an agent needs you.
-- **Reuse open space.** A switch in the header (`Ctrl+E`). When it is on and the repository has an open space, the choice opens there: in a **new tab**, in a **split to the right**, or the launcher **goes to the space** (a terminal choice only; an agent gets a new tab). When it is off, or the repository has no open space, the choice opens in a new space.
-- **No repository.** The **No repository** section at the top of the list has **Terminal** and **New space**, like Herdr's own New menu. `Ctrl+Enter` opens a shell at once: **Terminal** adds a tab to the shown space, **New space** makes a new space. `Enter` shows the choices (a terminal or an agent) with the **Space** row, so you can pick an other open space. The search finds these rows too (`term`, `space`).
-- **Pick the space.** The **Space** row of the choices shows **New space** and every open space of the repository's machine (the spaces that work in the repository come first). Click one, or press `Tab` (`Shift+Tab` goes back), to open the choice there. The default is the space that **Reuse open space** picks. **Go to space** works only in a space of the repository; in an other space, the choice opens in a new tab.
-- **Accounts.** The launcher finds `~/.claude`, `~/.claude-*`, `~/.codex` and `~/.codex-*` and shows the e-mail of each account. You can add other account folders in the settings.
-- **Agent arguments.** Extra arguments per agent, for example `--dangerously-skip-permissions` for Claude Code or `--yolo` for Codex.
-- **Cached list.** The launcher reads the root folders only when you add or remove one, or click Refresh (`Ctrl+R`). It never reads the disk when the popup opens.
-- **Cached agents.** The launcher keeps the list of installed agents in shared state, so the popup opens without starting a shell. After you install or remove an agent, click **Refresh agents** in the settings.
-- **Shortcut.** Change it in the settings: click **Change** and press the new keys. The launcher writes it to `keys.json`.
-- **Other machines.** Add a folder of a machine of `hc machine ls` in the settings: pick the machine and type the path (`~/code` or `C:\Projects`). Its repositories show in an **On <machine>** section, and a repository opens in a space on that machine, with the agents installed there. The machine can run Windows, macOS or Linux.
-- **Machine filter.** When some repositories are on other machines, a switch in the search bar shows all of them, only this computer, or only one machine (`Ctrl+M`).
+`preview.png` and `preview-src.png` are upstream screenshots: they show
+features (favorites, the reuse switch) that this fork no longer has.
 
-![The choices of a repository: a terminal, and each agent with each of its accounts](preview-choices.png)
+## What it does
 
-[`RECIPE.md`](RECIPE.md) describes the mod in full.
+- **Fuzzy search** of the repositories under your root folders. `hm` finds
+  `herdr-mods`; the matched letters are highlighted.
+- **This computer and other machines.** Root folders can be on this computer
+  (added with the system folder picker) or on a machine from `hc machine ls`
+  (typed, `/…` or `~/…`). Each machine gets its own section, and a filter
+  (`Ctrl+M`) shows one machine.
+- **Recent** repositories (the last 5 opened) at the top.
+- **Cached list.** The folders are searched only when you add or remove one,
+  or click Refresh (`Ctrl+R`).
+- **Choices:** Terminal, then each installed agent from Herdr's
+  `knownAgents()` (on the repository's machine).
+- **Where:** a new tab in the repository's open space (a space whose
+  terminal works in the repository), or a new space on the repository's
+  machine. `Tab` switches; the choice is remembered.
+- **Status bar item** (`repo-launcher-status`): `⌘O  repos`; a click opens
+  the launcher.
+
+## The key
+
+The launcher has no shortcut editor. Bind it yourself in
+`~/.config/herdr-app/keys.json` (see `keys.json` here):
+
+```json
+{ "global": { "cmd-o": "mod.open:repo-launcher" } }
+```
+
+`cmd-o` is suggested. Not `ctrl-p`: a bound Ctrl+letter key stops reaching the
+programs in your terminals, and shells and Claude Code use `Ctrl+P` for the
+previous command/history.
+
+## Keys in the popup
+
+| Keys | List | Choices |
+|---|---|---|
+| `↑` `↓`, `PgUp` `PgDn` | move | move |
+| `Enter` | show the choices | start the choice |
+| `1`–`9` | | start that choice |
+| `Ctrl+Enter` | a terminal at once | |
+| `Tab` | | its space / new space |
+| `Ctrl+R` | search the folders again | |
+| `Ctrl+M` | next machine filter | |
+| `Backspace`, `←` | | back |
+| `Esc` | close | close |
 
 ## Install
 
-With an agent (Claude Code or any agent that can read files), paste this prompt:
+`Read ~/.config/herdr-app/AGENTS.md, then add this mod: <this folder>`: copy
+`mods/repo-launcher` and `mods/repo-launcher-status` to
+`~/.config/herdr-app/mods/`, merge `keys.json`, and put the status block
+`{ "id": "repo-launcher-status", "type": "block", "content": { "mod": "repo-launcher-status" }, "size": { "px": 120 } }`
+at the end of your layout's status row.
 
-`Read ~/.config/herdr-app/AGENTS.md, then add this mod: https://github.com/dougcunha/herdr-mods/tree/main/repo-launcher-app and merge its keys.json`
+## What it runs and reads
 
-Or copy the folder yourself. The Herdr app must be running.
+- `exec("sh", ["-c", <fixed find script>, "sh", "4", ...rootFolders], { on, timeout: 120000 })`
+  per machine (`on`: null for this computer). Root folders are arguments,
+  never part of the script.
+- `knownAgents()` and `knownAgents({ on: machine })`.
+- `pickFolder()` for local root folders.
+- No network, no file reads or writes, no credential files.
+  State lives in `shared()`: `repo-launcher.settings`, `repo-launcher.cache`,
+  `repo-launcher.agents`, `repo-launcher.agents.remote`.
 
-```sh
-cp -r repo-launcher-app/mods/repo-launcher ~/.config/herdr-app/mods/repo-launcher
-herdr-app check ~/.config/herdr-app/mods/repo-launcher
-```
-
-On Windows PowerShell:
-
-```powershell
-Copy-Item -Recurse repo-launcher-app\mods\repo-launcher "$env:USERPROFILE\.config\herdr-app\mods\repo-launcher"
-herdr-app check "$env:USERPROFILE\.config\herdr-app\mods\repo-launcher"
-```
-
-Then add the key to the `global` section of `~/.config/herdr-app/keys.json` (the file [`keys.json`](keys.json) has it):
-
-```json
-"ctrl-p": "mod.open:repo-launcher"
-```
-
-Without a key, open it with `herdr-app do mod.open --name repo-launcher`, or from the command palette. Then pick a key in its settings.
-
-> **About `Ctrl+P`.** A global key works inside the terminals too, so the programs there stop getting `Ctrl+P`. Shells (bash, zsh, PowerShell in Emacs mode) and Claude Code use it for "previous command". If you need it there, pick another key in the settings, for example `Ctrl+Shift+G` or `Alt+P`. `Ctrl+Shift+P` is the command palette of the Herdr app.
-
-The mod has `"place": "none"`: it adds no panel by itself.
-
-## A status bar item (optional)
-
-The mod `repo-launcher-status` shows `Ctrl+P  repos` (your key) at the right end of the status bar, after `Ctrl+Shift+P  commands`. A click opens the launcher.
-
-1. Copy `mods/repo-launcher-status/` to `~/.config/herdr-app/mods/repo-launcher-status/`. Copy `mod.json` first: without it, Herdr docks a stray copy of the mod in your layout.
-2. Put it in your layout. Herdr's own layouts are read-only: clone one first (`herdr-app do layout.clone '{"name":"main","as":"my-main"}'`). Then replace the `status` block with a row (or, if the layout has a `status-row` already, add only the last block to its `children`):
-
-```json
-{ "id": "status-row", "type": "row", "size": { "px": 28 }, "resizable": false,
-  "children": [
-    { "id": "status", "type": "block", "content": { "mod": "workspace-status" } },
-    { "id": "repo-launcher-status", "type": "block", "content": { "mod": "repo-launcher-status" }, "size": { "px": 120 } } ] }
-```
-
-It needs the `repo-launcher` mod (it uses its icon and opens it).
-
-## First use
-
-1. Press `Ctrl+P`.
-2. Click **Add folder…** and pick the folder that holds your repositories (for example `~/code`). Add more folders in the settings.
-3. Wait for the search. It takes about 1 second for 60 repositories.
-4. Type a part of a repository name and press Enter.
-5. Press the number of the choice, or use the arrows and Enter.
-
-## Keys
-
-| Where | Key | What it does |
-| --- | --- | --- |
-| List | `↑` `↓`, `PgUp` `PgDn` | Move the selection |
-| List | `Enter` | Show the choices for the repository |
-| List | `Ctrl+Enter` | Open a terminal in the repository at once (on a **No repository** row: in the shown space or in a new space) |
-| List | `Ctrl+S` | Add or remove the favorite |
-| List | `Ctrl+E` | Turn "Reuse open space" on or off |
-| List | `Ctrl+R` | Read the root folders again |
-| List | `Ctrl+M` | Show all repositories, this computer only, or one machine only |
-| Choices | `1` to `9`, or `↑` `↓` and `Enter` | Open that choice |
-| Choices | `Tab`, `Shift+Tab` | Pick the space: a new space or an open space |
-| Choices | `Backspace` or `←` | Go back to the list |
-| Everywhere | `Esc` | Close the launcher |
-
-## What it runs, and its limits
-
-- **Programs.** To find the repositories, it runs PowerShell (`pwsh`, else `powershell`) on Windows and `sh` with `find` on macOS and Linux, through the app's `exec`. On another machine it runs the same programs there through herdr-core (`exec` with `on`), after `uname` or `$HOME` tells it the system. It uses no network of its own.
-- **Files that it reads.** The list of your home folder (to find the account folders), `.claude.json` of each Claude Code account and `auth.json` of each Codex account (only to show the e-mail). It reads no token for any other use.
-- **Status bar item.** `repo-launcher-status` only reads `keys()` and runs `mod.open`.
-- **Files that it writes.** Its settings and the repository cache go in the shared state of the app (`shared.json`, keys `repo-launcher.settings` and `repo-launcher.cache`). **Change** in the shortcut settings rewrites the `global` section of `keys.json`.
-- **A second account.** Herdr has no field for environment variables when it starts a program. For an account that is not the default one, the launcher starts the agent through a wrapper: `env CLAUDE_CONFIG_DIR=<folder> claude …` on macOS and Linux, and `pwsh -NoProfile -Command "$env:CLAUDE_CONFIG_DIR='<folder>'; & 'claude' …"` on Windows. Codex uses `CODEX_HOME`. A shell function or an alias with the agent name does not run in this wrapper; the agent program does.
-- **Search depth.** 3 folder levels under each root folder. The search does not go into a repository that it found, or into `node_modules`, `bin`, `obj`, `dist`, `build`, `target`, `vendor` and similar folders. At most 2000 repositories per root folder.
-- **A search stops when the popup closes.** Keep the popup open until the search ends. When the popup opens again with root folders and no cache, the search starts again.
-- **Other machines.** The system folder picker shows only this computer, so you type the path of a folder on another machine. The accounts are folders on this computer: on another machine, each agent starts with its default account. When a machine cannot be reached, Refresh keeps the repositories of its last search.
-- Tested on Windows. macOS and Linux use the same code with `find` and `env`.
+See `RECIPE.md` for the details.
